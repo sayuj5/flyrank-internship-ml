@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicting Content Engagement for Editorial Action — FlyRank ML Internship</title>
+<style>
+  :root {
+    --blue: #1F4E79;
+    --light-blue: #DEEAF1;
+    --red: #C00000;
+    --orange: #FF8C00;
+    --green: #375623;
+    --gray: #595959;
+    --light-gray: #F5F5F5;
+    --border: #E0E0E0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Georgia', serif;
+    color: #1a1a1a;
+    line-height: 1.7;
+    background: #fff;
+  }
+  .header {
+    background: var(--blue);
+    color: white;
+    padding: 60px 40px 50px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: normal;
+    max-width: 800px;
+    margin: 0 auto 20px;
+    line-height: 1.3;
+  }
+  .header .meta {
+    font-size: 0.95rem;
+    opacity: 0.85;
+    margin-bottom: 10px;
+  }
+  .header .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin: 4px;
+  }
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 30px;
+  }
+  .abstract {
+    background: var(--light-blue);
+    border-left: 5px solid var(--blue);
+    padding: 30px 35px;
+    margin: 40px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .abstract h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+  .abstract p {
+    font-size: 1rem;
+    color: #2a2a2a;
+    line-height: 1.8;
+  }
+  section {
+    margin: 50px 0;
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+  }
+  section:last-of-type { border-bottom: none; }
+  h2.section-title {
+    font-size: 1.5rem;
+    color: var(--blue);
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--light-blue);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #2a2a2a;
+    margin: 24px 0 10px;
+  }
+  p { margin-bottom: 14px; color: #2a2a2a; }
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .metric-card {
+    background: var(--light-gray);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .metric-card .value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--blue);
+    display: block;
+    font-family: 'Courier New', monospace;
+  }
+  .metric-card .label {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 4px;
+    display: block;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.95rem;
+  }
+  th {
+    background: var(--blue);
+    color: white;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: normal;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: var(--light-gray); }
+  .auc-winner { color: var(--green); font-weight: bold; }
+  .auc-loser { color: var(--red); }
+  .action-tier {
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 12px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .tier-1 { background: #FDECEA; border-left: 5px solid var(--red); }
+  .tier-2 { background: #FFF3E0; border-left: 5px solid var(--orange); }
+  .tier-3 { background: var(--light-blue); border-left: 5px solid var(--blue); }
+  .tier-4 { background: #F1F8E9; border-left: 5px solid var(--green); }
+  .tier-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 80px;
+    padding-top: 2px;
+  }
+  .tier-1 .tier-label { color: var(--red); }
+  .tier-2 .tier-label { color: var(--orange); }
+  .tier-3 .tier-label { color: var(--blue); }
+  .tier-4 .tier-label { color: var(--green); }
+  .tier-content { flex: 1; }
+  .tier-content strong { display: block; margin-bottom: 4px; }
+  .tier-content p { margin: 0; font-size: 0.9rem; color: var(--gray); }
+  .feature-bar-wrap { margin: 8px 0; }
+  .feature-label {
+    font-size: 0.88rem;
+    color: #2a2a2a;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .feature-bar-bg {
+    background: var(--border);
+    border-radius: 4px;
+    height: 12px;
+    overflow: hidden;
+  }
+  .feature-bar {
+    background: var(--blue);
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .limitation-list {
+    list-style: none;
+    padding: 0;
+  }
+  .limitation-list li {
+    padding: 12px 16px 12px 44px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+  }
+  .limitation-list li:last-child { border-bottom: none; }
+  .limitation-list li::before {
+    content: '⚠';
+    position: absolute;
+    left: 14px;
+    color: var(--orange);
+  }
+  .nogo-list {
+    list-style: none;
+    padding: 0;
+  }
+  .nogo-list li {
+    padding: 10px 16px 10px 40px;
+    position: relative;
+    font-size: 0.9rem;
+    color: var(--gray);
+    border-bottom: 1px solid var(--border);
+  }
+  .nogo-list li:last-child { border-bottom: none; }
+  .nogo-list li::before {
+    content: '✗';
+    position: absolute;
+    left: 14px;
+    color: var(--red);
+    font-weight: bold;
+  }
+  .repo-link {
+    display: inline-block;
+    background: var(--blue);
+    color: white;
+    padding: 10px 22px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin: 6px 6px 6px 0;
+  }
+  .repo-link:hover { background: #163a5c; }
+  .notebook-list {
+    list-style: none;
+    padding: 0;
+  }
+  .notebook-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .notebook-list li:last-child { border-bottom: none; }
+  .notebook-list a { color: var(--blue); }
+  .ack {
+    background: var(--light-gray);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-top: 30px;
+  }
+  .ack p { font-size: 0.9rem; color: var(--gray); margin: 0; }
+  .ack a { color: var(--blue); }
+  footer {
+    background: var(--blue);
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    padding: 30px;
+    font-size: 0.85rem;
+    margin-top: 60px;
+  }
+  footer a { color: rgba(255,255,255,0.9); }
+  code {
+    background: var(--light-gray);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88em;
+  }
+  .callout {
+    background: var(--light-blue);
+    border-left: 4px solid var(--blue);
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0;
+    font-size: 0.93rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Predicting Content Engagement for Editorial Action</h1>
+  <p class="meta">Sayuj Sur &nbsp;·&nbsp; FlyRank ML Internship &nbsp;·&nbsp; August 2026</p>
+  <span class="tag">Engagement Prediction</span>
+  <span class="tag">GradientBoosting</span>
+  <span class="tag">79M rows</span>
+  <span class="tag">Decision-support</span>
+</div>
+
+<div class="container">
+
+  <div class="abstract">
+    <h2>Abstract</h2>
+    <p>
+      Content teams managing large portfolios face a prioritization problem: which articles need editorial attention, and which are performing adequately? 
+      This paper frames engagement prediction as a binary classification task — predicting which articles will fall below median search clicks — 
+      using five behavioral signals from FlyRank's production search and analytics warehouse (79M rows, March 2026, 47 clients). 
+      A GradientBoosting model achieves AUC 0.936 under a grouped-by-client validation split, 
+      compared to 0.168 for a hand-written rule baseline, producing a ranked four-tier action queue 
+      (REWRITE_CONTENT, IMPROVE_STRUCTURE, MONITOR_ONLY, NO_ACTION) that directs editorial effort to the highest-opportunity articles first.
+    </p>
+  </div>
+
+  <!-- KEY METRICS -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <span class="value">176K</span>
+      <span class="label">Articles scored</span>
+    </div>
+    <div class="metric-card">
+      <span class="value">0.936</span>
+      <span class="label">AUC-ROC (grouped split)</span>
+    </div>
+    <div class="metric-card">
+      <span class="value">47</span>
+      <span class="label">Clients</span>
+    </div>
+    <div class="metric-card">
+      <span class="value">+0.755</span>
+      <span class="label">AUC gain over baseline</span>
+    </div>
+    <div class="metric-card">
+      <span class="value">85%</span>
+      <span class="label">Test accuracy</span>
+    </div>
+    <div class="metric-card">
+      <span class="value">4</span>
+      <span class="label">Action tiers</span>
+    </div>
+  </div>
+
+  <!-- 1. INTRODUCTION -->
+  <section>
+    <h2 class="section-title">1. Introduction &amp; Problem Statement</h2>
+    <p>
+      Content teams at scale face a prioritization problem: a portfolio of thousands of articles, most of which receive little or no organic search traffic, 
+      and limited editorial bandwidth to refresh them. The naive approach — reviewing articles by publish date or alphabetically — ignores the actual engagement signal.
+    </p>
+    <p>
+      FlyRank's content intelligence platform tracks article-level search performance for dozens of clients using data from Google Search Console and Google Analytics 4. 
+      This internship project asks: <strong>can a machine learning model identify which articles are likely to have low engagement before they lose ranking, 
+      and assign a prioritized editorial action to each?</strong>
+    </p>
+    <p>
+      The output is a ranked action queue — not a fully automated system. Every recommendation is intended for human review before any editorial action is taken.
+    </p>
+    <div class="callout">
+      <strong>Decision supported:</strong> A content editor decides whether to rewrite, restructure, or monitor an article based on its predicted engagement score. 
+      The cost of a wrong call: a missed low-engagement article gradually loses search ranking — harder to recover from than acting early.
+    </div>
+  </section>
+
+  <!-- 2. DATA -->
+  <section>
+    <h2 class="section-title">2. Data</h2>
+    <h3>Source</h3>
+    <p>
+      Dataset: <strong>FlyRank ML Internship Warehouse</strong>, released on Hugging Face (<code>FlyRank/internship-warehouse</code>).
+      Table: <code>fact_content_daily_performance</code>. Date window: <strong>March 2026</strong> (mid-panel month — the final month, June 2026, was sealed as a test window).
+    </p>
+    <table>
+      <tr><th>Dimension</th><th>Value</th></tr>
+      <tr><td>Raw rows (March 2026)</td><td>9,841,378</td></tr>
+      <tr><td>GSC-available rows (36.7%)</td><td>3,611,061</td></tr>
+      <tr><td>Articles after aggregation</td><td>176,738</td></tr>
+      <tr><td>Unique clients</td><td>47</td></tr>
+      <tr><td>Low engagement rate</td><td>61.1%</td></tr>
+      <tr><td>Clicks — mean / median / max</td><td>4.7 / 0 / 5,668</td></tr>
+    </table>
+    <h3>Exclusions</h3>
+    <p>
+      Rows where <code>gsc_data_available IS FALSE</code> were excluded — no usable search signal. 
+      <code>ga4_pageviews</code> was excluded as a feature: it is generated in the same user visit as a click, making it a label-leaking variable. 
+      June 2026 data was not used: as the final warehouse month, it is the natural outcome window for any past-to-future label and was treated as a sealed test set.
+      No client names, URLs, or raw queries appear anywhere in this analysis.
+    </p>
+  </section>
+
+  <!-- 3. METHODOLOGY -->
+  <section>
+    <h2 class="section-title">3. Methodology</h2>
+    <h3>Label Definition</h3>
+    <p>
+      <code>low_engagement = 1</code> if <code>clicks &lt;= median(clicks)</code> over March 2026, else 0. 
+      Median clicks = 0 (heavily zero-inflated distribution). This is a behavioral proxy — observed user action, not an editorial judgment. 
+      It comes from real user behavior, not a hand-coded rule.
+    </p>
+    <h3>Features (all leak-free)</h3>
+    <p>Every feature was verified as knowable before any editorial action is taken:</p>
+    <div class="feature-bar-wrap">
+      <div class="feature-label"><span>impressions (GSC daily log)</span><span>0.918</span></div>
+      <div class="feature-bar-bg"><div class="feature-bar" style="width:91.8%"></div></div>
+    </div>
+    <div class="feature-bar-wrap">
+      <div class="feature-label"><span>avg_position (GSC daily export)</span><span>0.048</span></div>
+      <div class="feature-bar-bg"><div class="feature-bar" style="width:4.8%"></div></div>
+    </div>
+    <div class="feature-bar-wrap">
+      <div class="feature-label"><span>engaged_sessions (GA4 daily)</span><span>0.019</span></div>
+      <div class="feature-bar-bg"><div class="feature-bar" style="width:1.9%"></div></div>
+    </div>
+    <div class="feature-bar-wrap">
+      <div class="feature-label"><span>days_active (count of days in data)</span><span>0.007</span></div>
+      <div class="feature-bar-bg"><div class="feature-bar" style="width:0.7%"></div></div>
+    </div>
+    <div class="feature-bar-wrap">
+      <div class="feature-label"><span>scroll_events (GA4 client-side)</span><span>0.007</span></div>
+      <div class="feature-bar-bg"><div class="feature-bar" style="width:0.7%"></div></div>
+    </div>
+    <p style="margin-top:12px;font-size:0.88rem;color:var(--gray);">
+      Removed as leaky: <code>ctr</code> (= clicks/impressions) and <code>clicks_per_day</code> (= clicks/days) — both derived from the label variable.
+    </p>
+    <h3>Model Choice</h3>
+    <p>
+      <strong>GradientBoostingClassifier</strong> (sklearn, n_estimators=100, max_depth=4, learning_rate=0.1). 
+      Chosen over logistic regression because engagement signals have non-linear interactions (impression volume × position rank). 
+      Chosen over a single decision tree for lower variance and more stable rankings.
+    </p>
+    <h3>Baseline (W04 Hand-Written Rule)</h3>
+    <p>
+      Score = impressions × (0.01 − CTR) where impressions ≥ 100 and CTR ≤ 0.01. Reason code: <code>LOW_CTR_HIGH_IMP</code>. 
+      This rule only fires on a narrow subset of articles — most score 0, giving poor ranking signal.
+    </p>
+    <h3>Validation Design</h3>
+    <p>
+      Two splits were run: a random 80/20 split (standard but optimistic — articles from the same client appear in both train and test), 
+      and a grouped-by-client split (honest — the test set contains only articles from clients not seen during training). 
+      The grouped split simulates real deployment: scoring a new client the model has never seen.
+    </p>
+  </section>
+
+  <!-- 4. RESULTS -->
+  <section>
+    <h2 class="section-title">4. Results</h2>
+    <table>
+      <tr><th>Method</th><th>AUC-ROC</th><th>Notes</th></tr>
+      <tr><td>Majority class baseline</td><td>0.500</td><td>Random — no signal</td></tr>
+      <tr><td>W04 rule (LOW_CTR_HIGH_IMP)</td><td class="auc-loser">0.168</td><td>Worse than random — rule too narrow</td></tr>
+      <tr><td>GradientBoosting (random split)</td><td>0.923</td><td>Optimistic — same-client mixing</td></tr>
+      <tr><td>GradientBoosting (grouped split)</td><td class="auc-winner">0.936</td><td>Honest — unseen clients in test ✓</td></tr>
+    </table>
+    <p>
+      The model improves over the W04 rule by <strong>+0.755 AUC points</strong> on the same test set. 
+      The W04 rule scored 0 for most articles (it only fires when impressions ≥ 100 AND CTR ≤ 0.01), making it a poor ranker. 
+      The GradientBoosting model produces a calibrated score for every article.
+    </p>
+    <p>
+      Notably, the grouped-by-client AUC (0.936) is <em>higher</em> than the random split AUC (0.923), 
+      suggesting the model has learned generalizable engagement signals rather than client-specific patterns.
+    </p>
+    <h3>Classification Performance (random split test set, 35,348 articles)</h3>
+    <table>
+      <tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr>
+      <tr><td>high_engagement</td><td>0.84</td><td>0.77</td><td>0.80</td><td>13,792</td></tr>
+      <tr><td>low_engagement</td><td>0.86</td><td>0.91</td><td>0.88</td><td>21,556</td></tr>
+      <tr><td><strong>accuracy</strong></td><td colspan="3"><strong>0.85</strong></td><td>35,348</td></tr>
+    </table>
+    <h3>Error Analysis</h3>
+    <p>
+      False negatives (2,031 articles): missed low-engagement articles have on average 1,289 impressions — 
+      the model struggles when high-visibility articles still underperform, likely because their position is strong but content intent is mismatched.
+    </p>
+    <p>
+      False positives (3,209 articles): wrongly flagged articles have on average 247 impressions — 
+      low-impression articles near the decision boundary are the hardest to classify correctly.
+    </p>
+  </section>
+
+  <!-- 5. LIMITATIONS -->
+  <section>
+    <h2 class="section-title">5. Limitations &amp; Honest Framing</h2>
+    <p>All claims in this work are <em>observed, measured, directional,</em> and <em>decision-support only</em>. The following limitations apply:</p>
+    <ul class="limitation-list">
+      <li><strong>No causal claims.</strong> The model identifies associations between behavioral signals and engagement outcomes. It does not prove that changing any feature will cause engagement to improve.</li>
+      <li><strong>47 clients only.</strong> Trained on 47 FlyRank clients in March 2026. Performance on clients with very different content categories, languages, or audience sizes has not been validated.</li>
+      <li><strong>Single month window.</strong> March 2026 may not represent seasonal variation. Topics with natural summer or winter peaks may be mis-scored if March is their off-season.</li>
+      <li><strong>No content understanding.</strong> The model uses behavioral signals only — it cannot read the article, assess writing quality, or detect factual errors.</li>
+      <li><strong>Position confounding.</strong> avg_position is a feature, but position and engagement are bidirectionally related. The causal direction is not established.</li>
+      <li><strong>AUC 0.936 is measured, not guaranteed.</strong> This metric was computed on held-out clients from March 2026 data. Equivalent performance in production requires monitoring and periodic retraining.</li>
+    </ul>
+  </section>
+
+  <!-- 6. RECOMMENDATIONS -->
+  <section>
+    <h2 class="section-title">6. Ranked Recommendations</h2>
+    <p>The model output feeds a four-tier action playbook. Human review is required before acting on any recommendation.</p>
+
+    <div class="action-tier tier-1">
+      <div class="tier-label">Tier 1</div>
+      <div class="tier-content">
+        <strong>REWRITE_CONTENT — 52,688 articles (29.8%)</strong>
+        <p>Score ≥ 0.80, avg_position ≤ 20. High-visibility articles with predicted low engagement. Content intent mismatch is likely. Action: full editorial rewrite — title, intro, search intent alignment.</p>
+      </div>
+    </div>
+
+    <div class="action-tier tier-2">
+      <div class="tier-label">Tier 2</div>
+      <div class="tier-content">
+        <strong>IMPROVE_STRUCTURE — 18,096 articles (10.2%)</strong>
+        <p>Score ≥ 0.60, avg_position ≤ 20. Moderate signal with decent visibility. Action: improve headings, tighten the introduction, add internal links.</p>
+      </div>
+    </div>
+
+    <div class="action-tier tier-3">
+      <div class="tier-label">Tier 3</div>
+      <div class="tier-content">
+        <strong>MONITOR_ONLY — 35,268 articles (20.0%)</strong>
+        <p>Score ≥ 0.60, avg_position &gt; 20. Low engagement predicted but article ranks poorly — likely a ranking problem, not content. Route to SEO team, not editorial.</p>
+      </div>
+    </div>
+
+    <div class="action-tier tier-4">
+      <div class="tier-label">Tier 4</div>
+      <div class="tier-content">
+        <strong>NO_ACTION — 70,686 articles (40.0%)</strong>
+        <p>Score &lt; 0.60. Model predicts adequate engagement. No immediate editorial action needed.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px;">Human Review Rules</h3>
+    <p>Before acting on any article: check if it is &lt; 30 days old (skip), avg_position &gt; 30 (route to SEO), a navigational query (skip), recently refreshed in last 60 days (skip), or seasonal content in off-season (skip).</p>
+
+    <h3>What Should Never Be Automated</h3>
+    <ul class="nogo-list">
+      <li>Delete or unpublish content based on model score alone</li>
+      <li>Auto-publish rewrites without human editorial review</li>
+      <li>Use the score for editor performance evaluation</li>
+      <li>Apply scores to clients outside FlyRank's warehouse</li>
+      <li>Report this score as a content quality rating externally</li>
+    </ul>
+
+    <h3>Monitoring &amp; Retrain Triggers</h3>
+    <p>Retrain monthly on the most recent completed month. Trigger early retraining if: mean engagement score shifts by &gt; 0.10, action rate drifts by &gt; 15 percentage points, or editor override rate exceeds 30%.</p>
+  </section>
+
+  <!-- 7. REPRODUCIBILITY -->
+  <section>
+    <h2 class="section-title">7. Reproducibility</h2>
+    <p>All notebooks are committed to the public GitHub repository and can be re-run in Google Colab with access to the FlyRank Hugging Face dataset.</p>
+    <a class="repo-link" href="https://github.com/sayuj5/flyrank-internship-ml" target="_blank">GitHub Repository</a>
+    <a class="repo-link" href="https://huggingface.co/datasets/FlyRank/internship-warehouse" target="_blank">Dataset on Hugging Face</a>
+    <ul class="notebook-list" style="margin-top:20px;">
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w01_research_question.ipynb">W01 — Research Question &amp; Lane</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w02_ml_task_framing.ipynb">W02 — ML Task Framing</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w03_data_contract.ipynb">W03 — Data Contract</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w04_baseline_score.ipynb">W04 — Baseline Score (Rule)</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w05_model.ipynb">W05 — GradientBoosting Model</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w06_validation_audit.ipynb">W06 — Validation Audit</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/w07_action_playbook.ipynb">W07 — Action Playbook</a></li>
+      <li><a href="https://github.com/sayuj5/flyrank-internship-ml/blob/main/work/notebooks/capstone.ipynb">Capstone — Full Research Paper Notebook</a></li>
+    </ul>
+
+    <div class="ack">
+      <p>
+        <strong>Acknowledgments &amp; Data Credit:</strong> Built on the FlyRank ML Internship dataset. 
+        Data source: <a href="https://flyrank.ai" target="_blank">flyrank.ai</a> — production search and analytics data processed through FlyRank's warehouse pipeline. 
+        This work was completed as part of the FlyRank AI ML Internship program, August 2026. 
+        Analysis and modeling by Sayuj Sur. All client data is anonymized; no client names, URLs, or private queries appear in this report.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>Predicting Content Engagement for Editorial Action &nbsp;·&nbsp; Sayuj Sur &nbsp;·&nbsp; FlyRank ML Internship &nbsp;·&nbsp; August 2026</p>
+  <p style="margin-top:8px;"><a href="https://github.com/sayuj5/flyrank-internship-ml">github.com/sayuj5/flyrank-internship-ml</a> &nbsp;·&nbsp; Built on the <a href="https://flyrank.ai">FlyRank</a> dataset</p>
+</footer>
+
+</body>
+</html>
